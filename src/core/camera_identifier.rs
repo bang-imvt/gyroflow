@@ -158,6 +158,36 @@ impl CameraIdentifier {
                     }
                 }
             }
+            "ZCAM" => {
+                if let Some(ref samples) = input.samples {
+                    for info in samples {
+                        if let Some(ref tag_map) = info.tag_map {
+                            if let Some(v) = tag_map.get(&GroupId::Lens).and_then(|map| map.get_t(TagId::Name) as Option<&String>) {
+                                id.lens_model = v.clone();
+                            }
+                            if let Some(map) = tag_map.get(&GroupId::Default) {
+                                if let Some(v) = map.get_t(TagId::Metadata) as Option<&serde_json::Value> {
+                                    if let Some(lens_type) = v.get("lens_type").and_then(|v| v.as_str()).map(str::trim).filter(|v| !v.is_empty()) {
+                                        id.lens_model = lens_type.to_owned();
+                                        id.lens_info = lens_type.to_owned();
+                                    }
+                                    if let Some(focal_length) = v.get("focal_length").and_then(|v| v.as_f64()) {
+                                        id.lens_info = format!("{:.2}mm", focal_length);
+                                        id.focal_length = Some(focal_length);
+                                    }
+                                    if let Some(focal_length) = v.get("focal_length").and_then(|v| v.as_str()).map(str::trim).filter(|v| !v.is_empty()) {
+                                        id.lens_info = focal_length.to_owned();
+                                        id.focal_length = focal_length.replace("mm", "").parse::<f64>().ok();
+                                    }
+                                }
+                            }
+                        }
+                        if !id.lens_info.is_empty() {
+                            break;
+                        }
+                    }
+                }
+            }
             _ => {
                 if let Some(ref samples) = input.samples {
                     let mut try_again = false;
